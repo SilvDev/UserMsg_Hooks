@@ -18,7 +18,7 @@
 
 
 
-#define PLUGIN_VERSION 		"1.5"
+#define PLUGIN_VERSION 		"1.6"
 
 /*=======================================================================================
 	Plugin Info:
@@ -31,6 +31,9 @@
 
 ========================================================================================
 	Change Log:
+
+1.6 (07-Nov-2023)
+	- Fixed not deleting handles on plugin start.
 
 1.5 (04-Dec-2021)
 	- Changes to fix warnings when compiling on SourceMod 1.11.
@@ -148,7 +151,7 @@ public void OnPluginStart()
 	// Logging
 	g_kvMsgStructs = new KeyValues("usermessages");
 	char sPath[PLATFORM_MAX_PATH];
-	BuildPath(Path_SM, sPath, sizeof sPath, CONFIG_TYPES);
+	BuildPath(Path_SM, sPath, sizeof(sPath), CONFIG_TYPES);
 	if( FileExists(sPath) )
 		g_kvMsgStructs.ImportFromFile(sPath);
 }
@@ -177,7 +180,7 @@ void HookDetours()
 	char temp[64];
 	for( int i = 0; i <= MAX_HOOKS; i++ )
 	{
-		Format(temp, sizeof temp, "UserMsg_%d", i);
+		FormatEx(temp, sizeof(temp), "UserMsg_%d", i);
 		patchAddr = GameConfGetAddress(hGamedata, temp);
 		#if VERBOSE
 		PrintToServer("USERMSG: STRING %02d PTR %X", i, patchAddr);
@@ -192,7 +195,7 @@ void HookDetours()
 
 	// Write custom gamedata with found addresses
 	char sPath[PLATFORM_MAX_PATH];
-	BuildPath(Path_SM, sPath, sizeof sPath, "gamedata/%s.txt", GAMEDATA2);
+	BuildPath(Path_SM, sPath, sizeof(sPath), "gamedata/%s.txt", GAMEDATA2);
 	File hFile = OpenFile(sPath, "w", false);
 
 	char sAddress[12];
@@ -240,7 +243,7 @@ void HookDetours()
 
 		if( patchAddr )
 		{
-			Format(sAddress, sizeof sAddress, "%X", patchAddr);
+			FormatEx(sAddress, sizeof(sAddress), "%X", patchAddr);
 			ReverseAddress(sAddress, sHexAddr);
 
 			hFile.WriteLine("			\"UserMsg_%d\"", i);
@@ -277,7 +280,7 @@ void HookDetours()
 
 		if( patchAddr )
 		{
-			Format(temp, sizeof temp, "UserMsg_%d", i);
+			FormatEx(temp, sizeof(temp), "UserMsg_%d", i);
 			patchAddr = GameConfGetAddress(hGamedata, temp);
 
 			if( patchAddr )
@@ -338,6 +341,8 @@ void HookDetours()
 					case 18:	if( !DHookEnableDetour(hDetour, false, MessageWriteWRITE_WORD) )		SetFailState("Failed to detour \"MessageWriteWRITE_WORD\" function.");
 				}
 
+				delete hDetour;
+
 				#if VERBOSE
 				PrintToServer("USERMSG: DETOUR %02d PTR %X (%s)", i, patchAddr, i == 0 ? "UserMessageBegin" : g_sTypes[i-1]);
 				#endif
@@ -357,10 +362,10 @@ void ReverseAddress(const char[] sBytes, char sReturn[32])
 	{
 		strcopy(sByte, i >= 1 ? 3 : i + 3, sBytes[i >= 0 ? i : 0]);
 
-		StrCat(sReturn, sizeof sReturn, "\\x");
+		StrCat(sReturn, sizeof(sReturn), "\\x");
 		if( strlen(sByte) == 1 )
-			StrCat(sReturn, sizeof sReturn, "0");
-		StrCat(sReturn, sizeof sReturn, sByte);
+			StrCat(sReturn, sizeof(sReturn), "0");
+		StrCat(sReturn, sizeof(sReturn), sByte);
 	}
 }
 
@@ -369,7 +374,7 @@ void ReverseAddress(const char[] sBytes, char sReturn[32])
 // ====================================================================================================
 // CVARS
 // ====================================================================================================
-public void ConVarChanged_Cvars(Handle convar, const char[] oldValue, const char[] newValue)
+void ConVarChanged_Cvars(Handle convar, const char[] oldValue, const char[] newValue)
 {
 	GetCvars();
 }
@@ -389,7 +394,7 @@ void GetCvars()
 	g_hCvarFilter.GetString(sCvar, sizeof(sCvar));
 	if( sCvar[0] != 0 )
 	{
-		StrCat(sCvar, sizeof sCvar, ",");
+		StrCat(sCvar, sizeof(sCvar), ",");
 
 		while( (pos = FindCharInString(sCvar[last], ',')) != -1 )
 		{
@@ -403,7 +408,7 @@ void GetCvars()
 	g_hCvarListen.GetString(sCvar, sizeof(sCvar));
 	if( sCvar[0] != 0 )
 	{
-		StrCat(sCvar, sizeof sCvar, ",");
+		StrCat(sCvar, sizeof(sCvar), ",");
 
 		pos = 0;
 		last = 0;
@@ -421,7 +426,7 @@ void GetCvars()
 // ====================================================================================================
 // COMMANDS
 // ====================================================================================================
-public Action CmdListen(int client, int args)
+Action CmdListen(int client, int args)
 {
 	g_iListening = 1;
 	g_bWatch[client] = true;
@@ -431,7 +436,7 @@ public Action CmdListen(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action CmdStop(int client, int args)
+Action CmdStop(int client, int args)
 {
 	g_aWatch.Clear();
 	g_bWatch[client] = false;
@@ -442,7 +447,7 @@ public Action CmdStop(int client, int args)
 	return Plugin_Handled;
 }
 
-public Action CmdWatch(int client, int args)
+Action CmdWatch(int client, int args)
 {
 	if( args != 1 )
 	{
@@ -453,12 +458,12 @@ public Action CmdWatch(int client, int args)
 	// Watch list
 	int pos, last;
 	char sCvar[4096];
-	GetCmdArg(1, sCvar, sizeof sCvar);
+	GetCmdArg(1, sCvar, sizeof(sCvar));
 	g_aWatch.Clear();
 
 	if( sCvar[0] != 0 )
 	{
-		StrCat(sCvar, sizeof sCvar, ",");
+		StrCat(sCvar, sizeof(sCvar), ",");
 
 		while( (pos = FindCharInString(sCvar[last], ',')) != -1 )
 		{
@@ -488,7 +493,7 @@ void ListenAll()
 	int i = 1;
 	while( i )
 	{
-		if( GetUserMessageName(view_as<UserMsg>(i), msgname, sizeof msgname) )
+		if( GetUserMessageName(view_as<UserMsg>(i), msgname, sizeof(msgname)) )
 		{
 			g_iHookedUserMsg[i] = 1;
 			HookUserMessage(view_as<UserMsg>(i), OnMessage, false);
@@ -516,7 +521,7 @@ void UnhookAll()
 	}
 }
 
-public Action OnMessage(UserMsg msg_id, BfRead hMsg, const int[] players, int playersNum, bool reliable, bool init)
+Action OnMessage(UserMsg msg_id, BfRead hMsg, const int[] players, int playersNum, bool reliable, bool init)
 {
 	// Exit?
 	g_WatchDetour = false;
@@ -536,8 +541,8 @@ public Action OnMessage(UserMsg msg_id, BfRead hMsg, const int[] players, int pl
 
 
 	// Name
-	GetUserMessageName(msg_id, msgname, sizeof msgname);
-	g_aStruct.GetString(0, id, sizeof id);
+	GetUserMessageName(msg_id, msgname, sizeof(msgname));
+	g_aStruct.GetString(0, id, sizeof(id));
 
 	if( strcmp(msgname, id) )
 	{
@@ -559,7 +564,7 @@ public Action OnMessage(UserMsg msg_id, BfRead hMsg, const int[] players, int pl
 		sizes += g_iSizes[type];
 	}
 
-	Format(id, sizeof id, "%s/%d:%d:%d", msgname, g_aStruct.Length - 1, sizes, types);
+	FormatEx(id, sizeof(id), "%s/%d:%d:%d", msgname, g_aStruct.Length - 1, sizes, types);
 
 
 
@@ -597,13 +602,13 @@ public Action OnMessage(UserMsg msg_id, BfRead hMsg, const int[] players, int pl
 					for( int i = 1; i < g_aStruct.Length; i++ )
 					{
 						type = g_aStruct.Get(i);
-						IntToString(i, val, sizeof val);
+						IntToString(i, val, sizeof(val));
 						g_kvMsgStructs.SetString(val, g_sTypes[type]);
 					}
 				}
 
 				char sPath[PLATFORM_MAX_PATH];
-				BuildPath(Path_SM, sPath, sizeof sPath, CONFIG_TYPES);
+				BuildPath(Path_SM, sPath, sizeof(sPath), CONFIG_TYPES);
 
 				g_kvMsgStructs.Rewind();
 				g_kvMsgStructs.ExportToFile(sPath);
@@ -644,24 +649,24 @@ public Action OnMessage(UserMsg msg_id, BfRead hMsg, const int[] players, int pl
 				// {
 					// float vVec[3];
 					// BfReadAngles(hMsg, vVec);
-					// Format(buffer, sizeof buffer, "%s[%f %f %f]", buffer, vVec[0], vVec[1], vVec[2]);
+					// Format(buffer, sizeof(buffer), "%s[%f %f %f]", buffer, vVec[0], vVec[1], vVec[2]);
 				// }
 				case TYPE_String:
 				{
-					BfReadString(hMsg, temp, sizeof temp);
+					BfReadString(hMsg, temp, sizeof(temp));
 					Format(buffer, sizeof(buffer), "%s[%s]", buffer, temp);
 				}
 				case TYPE_BitVecInt, TYPE_Vec3Coord:
 				{
 					float vVec[3];
 					BfReadVecCoord(hMsg, vVec);
-					Format(buffer, sizeof buffer, "%s[%f %f %f]", buffer, vVec[0], vVec[1], vVec[2]);
+					Format(buffer, sizeof(buffer), "%s[%f %f %f]", buffer, vVec[0], vVec[1], vVec[2]);
 				}
 				case TYPE_Vec3Normal:
 				{
 					float vVec[3];
 					BfReadVecNormal(hMsg, vVec);
-					Format(buffer, sizeof buffer, "%s[%f %f %f]", buffer, vVec[0], vVec[1], vVec[2]);
+					Format(buffer, sizeof(buffer), "%s[%f %f %f]", buffer, vVec[0], vVec[1], vVec[2]);
 				}
 				case TYPE_Entity:													Format(buffer, sizeof(buffer), "%s[%d]", buffer, BfReadEntity(hMsg));
 				case TYPE_Bool, TYPE_WRITE_CHAR:									Format(buffer, sizeof(buffer), "%s[%d]", buffer, BfReadBool(hMsg));
@@ -675,7 +680,7 @@ public Action OnMessage(UserMsg msg_id, BfRead hMsg, const int[] players, int pl
 				}
 			}
 
-			StrCat(buffer, sizeof buffer, " ");
+			StrCat(buffer, sizeof(buffer), " ");
 		}
 
 		if( g_aStruct.Length > 1 )
@@ -690,7 +695,7 @@ public Action OnMessage(UserMsg msg_id, BfRead hMsg, const int[] players, int pl
 			if( g_hLogFile == null )
 			{
 				char sPath[PLATFORM_MAX_PATH];
-				BuildPath(Path_SM, sPath, sizeof sPath, CONFIG_DUMP);
+				BuildPath(Path_SM, sPath, sizeof(sPath), CONFIG_DUMP);
 				g_hLogFile = OpenFile(sPath, "a", false);
 			}
 
@@ -715,10 +720,10 @@ public Action OnMessage(UserMsg msg_id, BfRead hMsg, const int[] players, int pl
 					// Cannot print from inside a UserMessage!
 					if( IsClientInGame(i) && !IsFakeClient(i) )
 					{
-						// Format to 250 bytes due to TextMsg size limit:
+						// Format to 255 bytes due to TextMsg size limit:
 						// "DLL_MessageEnd:  Refusing to send user message TextMsg of 256 bytes to client, user message size limit is 255 bytes"
-						ReplaceString(buffer, sizeof buffer, "\%", "%%/");
-						Format(temp, 250, "\x04UM: \x05%s\x01: %s", id, buffer);
+						ReplaceString(buffer, sizeof(buffer), "\%", "%%/");
+						FormatEx(temp, sizeof(temp), "\x04UM: \x05%s\x01: %s", id, buffer);
 
 						DataPack hPack = new DataPack();
 						hPack.WriteCell(GetClientUserId(i));
@@ -737,14 +742,14 @@ public Action OnMessage(UserMsg msg_id, BfRead hMsg, const int[] players, int pl
 	return Plugin_Continue;
 }
 
-public void OnNext(DataPack hPack)
+void OnNext(DataPack hPack)
 {
 	hPack.Reset();
 	int client = hPack.ReadCell();
 	if( (client = GetClientOfUserId(client)) && IsClientInGame(client) )
 	{
-		char temp[250];
-		hPack.ReadString(temp, sizeof temp);
+		static char temp[255];
+		hPack.ReadString(temp, sizeof(temp));
 		delete hPack;
 		PrintToChat(client, temp);
 	}
@@ -755,12 +760,12 @@ public void OnNext(DataPack hPack)
 // ====================================================================================================
 // DETOURS - MSG BEGIN / END
 // ====================================================================================================
-public MRESReturn UserMessageBegin(Handle hReturn, Handle hParams)
+MRESReturn UserMessageBegin(Handle hReturn, Handle hParams)
 {
 	if( g_iListening || g_iCvarLogging )
 	{
 		static char msgname[LEN_CLASS];
-		DHookGetParamString(hParams, 2, msgname, sizeof msgname);
+		DHookGetParamString(hParams, 2, msgname, sizeof(msgname));
 
 		g_aStruct.Clear();
 		g_aStruct.PushString(msgname);
@@ -775,93 +780,93 @@ public MRESReturn UserMessageBegin(Handle hReturn, Handle hParams)
 // ====================================================================================================
 // DETOURS - STRUCTS
 // ====================================================================================================
-public MRESReturn MessageWriteAngle(Handle hReturn, Handle hParams)
+MRESReturn MessageWriteAngle(Handle hReturn, Handle hParams)
 {
 	if( g_WatchDetour ) g_aStruct.Push(TYPE_Angle);
 	return MRES_Ignored;
 }
-public MRESReturn MessageWriteBits(Handle hReturn, Handle hParams)
+MRESReturn MessageWriteBits(Handle hReturn, Handle hParams)
 {
 	if( g_WatchDetour ) g_aStruct.Push(TYPE_Bits);
 	return MRES_Ignored;
 }
-public MRESReturn MessageWriteBitVecIntegral(Handle hReturn, Handle hParams)
+MRESReturn MessageWriteBitVecIntegral(Handle hReturn, Handle hParams)
 {
 	if( g_WatchDetour ) g_aStruct.Push(TYPE_BitVecInt);
 	return MRES_Ignored;
 }
-public MRESReturn MessageWriteBool(Handle hReturn, Handle hParams)
+MRESReturn MessageWriteBool(Handle hReturn, Handle hParams)
 {
 	if( g_WatchDetour ) g_aStruct.Push(TYPE_Bool);
 	return MRES_Ignored;
 }
-public MRESReturn MessageWriteCoord(Handle hReturn, Handle hParams)
+MRESReturn MessageWriteCoord(Handle hReturn, Handle hParams)
 {
 	if( g_WatchDetour ) g_aStruct.Push(TYPE_Coord);
 	return MRES_Ignored;
 }
-public MRESReturn MessageWriteEHandle(Handle hReturn, Handle hParams)
+MRESReturn MessageWriteEHandle(Handle hReturn, Handle hParams)
 {
 	if( g_WatchDetour ) g_aStruct.Push(TYPE_EHandle);
 	return MRES_Ignored;
 }
-public MRESReturn MessageWriteEntity(Handle hReturn, Handle hParams)
+MRESReturn MessageWriteEntity(Handle hReturn, Handle hParams)
 {
 	if( g_WatchDetour ) g_aStruct.Push(TYPE_Entity);
 	return MRES_Ignored;
 }
-public MRESReturn MessageWriteFloat(Handle hReturn, Handle hParams)
+MRESReturn MessageWriteFloat(Handle hReturn, Handle hParams)
 {
 	if( g_WatchDetour ) g_aStruct.Push(TYPE_Float);
 	return MRES_Ignored;
 }
-public MRESReturn MessageWriteLong(Handle hReturn, Handle hParams)
+MRESReturn MessageWriteLong(Handle hReturn, Handle hParams)
 {
 	if( g_WatchDetour ) g_aStruct.Push(TYPE_Long);
 	return MRES_Ignored;
 }
-public MRESReturn MessageWriteSBitLong(Handle hReturn, Handle hParams)
+MRESReturn MessageWriteSBitLong(Handle hReturn, Handle hParams)
 {
 	if( g_WatchDetour ) g_aStruct.Push(TYPE_SBitLong);
 	return MRES_Ignored;
 }
-public MRESReturn MessageWriteString(Handle hReturn, Handle hParams)
+MRESReturn MessageWriteString(Handle hReturn, Handle hParams)
 {
 	if( g_WatchDetour ) g_aStruct.Push(TYPE_String);
 	return MRES_Ignored;
 }
-public MRESReturn MessageWriteUBitLong(Handle hReturn, Handle hParams)
+MRESReturn MessageWriteUBitLong(Handle hReturn, Handle hParams)
 {
 	if( g_WatchDetour ) g_aStruct.Push(TYPE_UBitLong);
 	return MRES_Ignored;
 }
-public MRESReturn MessageWriteVec3Coord(Handle hReturn, Handle hParams)
+MRESReturn MessageWriteVec3Coord(Handle hReturn, Handle hParams)
 {
 	if( g_WatchDetour ) g_aStruct.Push(TYPE_Vec3Coord);
 	return MRES_Ignored;
 }
-public MRESReturn MessageWriteVec3Normal(Handle hReturn, Handle hParams)
+MRESReturn MessageWriteVec3Normal(Handle hReturn, Handle hParams)
 {
 	if( g_WatchDetour ) g_aStruct.Push(TYPE_Vec3Normal);
 	return MRES_Ignored;
 }
-public MRESReturn MessageWriteWRITE_BYTE(Handle hReturn, Handle hParams)
+MRESReturn MessageWriteWRITE_BYTE(Handle hReturn, Handle hParams)
 {
 	if( g_WatchDetour ) g_aStruct.Push(TYPE_WRITE_BYTE);
 	return MRES_Ignored;
 }
-public MRESReturn MessageWriteWRITE_CHAR(Handle hReturn, Handle hParams)
+MRESReturn MessageWriteWRITE_CHAR(Handle hReturn, Handle hParams)
 {
 	if( g_WatchDetour ) g_aStruct.Push(TYPE_WRITE_CHAR);
 	return MRES_Ignored;
 }
-public MRESReturn MessageWriteWRITE_SHORT(Handle hReturn, Handle hParams)
+MRESReturn MessageWriteWRITE_SHORT(Handle hReturn, Handle hParams)
 {
 	if( g_WatchDetour ) g_aStruct.Push(TYPE_WRITE_SHORT);
 	return MRES_Ignored;
 }
-public MRESReturn MessageWriteWRITE_WORD(Handle hReturn, Handle hParams)
+MRESReturn MessageWriteWRITE_WORD(Handle hReturn, Handle hParams)
 {
 	if( g_WatchDetour ) g_aStruct.Push(TYPE_WRITE_WORD);
 	return MRES_Ignored;
-}
+}	
