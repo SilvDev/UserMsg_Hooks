@@ -1,6 +1,6 @@
 /*
 *	UserMsg Hooks - DevTools
-*	Copyright (C) 2021 Silvers
+*	Copyright (C) 2023 Silvers
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -869,4 +869,4 @@ MRESReturn MessageWriteWRITE_WORD(Handle hReturn, Handle hParams)
 {
 	if( g_WatchDetour ) g_aStruct.Push(TYPE_WRITE_WORD);
 	return MRES_Ignored;
-}	
+}
