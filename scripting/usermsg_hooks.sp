@@ -1,6 +1,6 @@
 /*
 *	UserMsg Hooks - DevTools
-*	Copyright (C) 2023 Silvers
+*	Copyright (C) 2024 Silvers
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 
 
-#define PLUGIN_VERSION 		"1.6"
+#define PLUGIN_VERSION 		"1.7"
 
 /*=======================================================================================
 	Plugin Info:
@@ -31,6 +31,9 @@
 
 ========================================================================================
 	Change Log:
+
+1.7 (28-Jan-2024)
+	- Fixed memory leak caused by clearing StringMap/ArrayList data instead of deleting.
 
 1.6 (07-Nov-2023)
 	- Fixed not deleting handles on plugin start.
@@ -387,8 +390,14 @@ void GetCvars()
 	// Filters
 	int pos, last;
 	char sCvar[4096];
-	g_aFilter.Clear();
-	g_aListen.Clear();
+
+	// .Clear() is creating a memory leak
+	// g_aFilter.Clear();
+	// g_aListen.Clear();
+	delete g_aFilter;
+	delete g_aListen;
+	g_aFilter = new ArrayList(ByteCountToCells(LEN_CLASS));
+	g_aListen = new ArrayList(ByteCountToCells(LEN_CLASS));
 
 	// Filter list
 	g_hCvarFilter.GetString(sCvar, sizeof(sCvar));
@@ -438,7 +447,11 @@ Action CmdListen(int client, int args)
 
 Action CmdStop(int client, int args)
 {
-	g_aWatch.Clear();
+	// .Clear() is creating a memory leak
+	// g_aWatch.Clear();
+	delete g_aWatch;
+	g_aWatch = new ArrayList(ByteCountToCells(LEN_CLASS));
+
 	g_bWatch[client] = false;
 	g_iListening = 0;
 	if( g_hLogFile != null ) delete g_hLogFile;
@@ -459,7 +472,11 @@ Action CmdWatch(int client, int args)
 	int pos, last;
 	char sCvar[4096];
 	GetCmdArg(1, sCvar, sizeof(sCvar));
-	g_aWatch.Clear();
+
+	// .Clear() is creating a memory leak
+	// g_aWatch.Clear();
+	delete g_aWatch;
+	g_aWatch = new ArrayList(ByteCountToCells(LEN_CLASS));
 
 	if( sCvar[0] != 0 )
 	{
@@ -547,7 +564,12 @@ Action OnMessage(UserMsg msg_id, BfRead hMsg, const int[] players, int playersNu
 	if( strcmp(msgname, id) )
 	{
 		LogError("Mismatch types: %s - %s", msgname, id);
-		g_aStruct.Clear();
+
+		// .Clear() is creating a memory leak
+		// g_aStruct.Clear();
+		delete g_aStruct;
+		g_aStruct = CreateArray(LEN_CLASS);
+
 		return Plugin_Continue;
 	}
 
@@ -623,10 +645,34 @@ Action OnMessage(UserMsg msg_id, BfRead hMsg, const int[] players, int playersNu
 	{
 		if( g_iListening == 1 )
 		{
-			if( g_aFilter.Length != 0 && g_aFilter.FindString(msgname) != -1 )	{g_aStruct.Clear(); return Plugin_Continue;}
-			if( g_aListen.Length != 0 && g_aListen.FindString(msgname) == -1 )	{g_aStruct.Clear(); return Plugin_Continue;}
+			if( g_aFilter.Length != 0 && g_aFilter.FindString(msgname) != -1 )
+			{
+				// .Clear() is creating a memory leak
+				// g_aStruct.Clear();
+				delete g_aStruct;
+				g_aStruct = CreateArray(LEN_CLASS);
+
+				return Plugin_Continue;
+			}
+			if( g_aListen.Length != 0 && g_aListen.FindString(msgname) == -1 )
+			{
+				// .Clear() is creating a memory leak
+				// g_aStruct.Clear();
+				delete g_aStruct;
+				g_aStruct = CreateArray(LEN_CLASS);
+
+				return Plugin_Continue;
+			}
 		} else {
-			if( g_aWatch.FindString(msgname) == -1 )							{g_aStruct.Clear(); return Plugin_Continue;}
+			if( g_aWatch.FindString(msgname) == -1 )
+			{
+				// .Clear() is creating a memory leak
+				// g_aStruct.Clear();
+				delete g_aStruct;
+				g_aStruct = CreateArray(LEN_CLASS);
+
+				return Plugin_Continue;
+			}
 		}
 
 		buffer[0] = 0;
@@ -685,7 +731,11 @@ Action OnMessage(UserMsg msg_id, BfRead hMsg, const int[] players, int playersNu
 
 		if( g_aStruct.Length > 1 )
 			buffer[strlen(buffer) - 1] = 0; // Remove last space
-		g_aStruct.Clear();
+
+		// .Clear() is creating a memory leak
+		// g_aStruct.Clear();
+		delete g_aStruct;
+		g_aStruct = CreateArray(LEN_CLASS);
  
  
  
@@ -767,7 +817,11 @@ MRESReturn UserMessageBegin(Handle hReturn, Handle hParams)
 		static char msgname[LEN_CLASS];
 		DHookGetParamString(hParams, 2, msgname, sizeof(msgname));
 
-		g_aStruct.Clear();
+		// .Clear() is creating a memory leak
+		// g_aStruct.Clear();
+		delete g_aStruct;
+		g_aStruct = CreateArray(LEN_CLASS);
+
 		g_aStruct.PushString(msgname);
 		g_WatchDetour = true;
 	}
