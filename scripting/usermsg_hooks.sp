@@ -18,7 +18,7 @@
 
 
 
-#define PLUGIN_VERSION 		"1.7"
+#define PLUGIN_VERSION 		"1.8"
 
 /*=======================================================================================
 	Plugin Info:
@@ -31,6 +31,9 @@
 
 ========================================================================================
 	Change Log:
+
+1.8 (03-Apr-2024)
+	- Fixed potential memory leak. Thanks to "little_froy" for reporting.
 
 1.7 (28-Jan-2024)
 	- Fixed memory leak caused by clearing StringMap/ArrayList data instead of deleting.
@@ -225,7 +228,9 @@ void HookDetours()
 				hFile.WriteLine("				{");
 				hFile.WriteLine("					\"signature\"		\"UserMsg_%d\"", i);
 				hFile.WriteLine("				}");
-			} else {
+			}
+			else
+			{
 				hFile.WriteLine("				\"windows\"");
 				hFile.WriteLine("				{");
 				hFile.WriteLine("					\"signature\"		\"UserMsg_%d\"", i);
@@ -255,7 +260,9 @@ void HookDetours()
 			if( OS )
 			{
 				hFile.WriteLine("				\"linux\"	\"%s\"", sHexAddr);
-			} else {
+			}
+			else
+			{
 				hFile.WriteLine("				\"windows\"	\"%s\"", sHexAddr);
 			}
 			hFile.WriteLine("			}");
@@ -301,7 +308,9 @@ void HookDetours()
 					)
 					{
 						break;
-					} else {
+					}
+					else
+					{
 						cc = x + 3;
 					}
 				}
@@ -317,7 +326,9 @@ void HookDetours()
 					DHookAddParam(hDetour, HookParamType_CharPtr);
 				}
 				else
+				{
 					hDetour = DHookCreateDetour(patchAddr, CallConv_CDECL, ReturnType_Int, ThisPointer_Ignore);
+				}
 
 				if( hDetour == INVALID_HANDLE ) SetFailState("Failed to create detour \"%s\" %d function.", i ? "MessageWrite" : "UserMessageBegin", i);
 
@@ -350,7 +361,9 @@ void HookDetours()
 				PrintToServer("USERMSG: DETOUR %02d PTR %X (%s)", i, patchAddr, i == 0 ? "UserMessageBegin" : g_sTypes[i-1]);
 				#endif
 			}
-		} else {
+		}
+		else
+		{
 			if( i == 0 ) SetFailState("Couldn't find required UserMessageBegin function.");
 		}
 	}
@@ -520,7 +533,9 @@ void ListenAll()
 			#endif
 
 			i++;
-		} else {
+		}
+		else
+		{
 			i = 0;
 		}
 	}
@@ -600,7 +615,9 @@ Action OnMessage(UserMsg msg_id, BfRead hMsg, const int[] players, int playersNu
 		if( g_kvMsgStructs.JumpToKey(id) == true )
 		{
 			type = 0;
-		} else {
+		}
+		else
+		{
 			type = 1;
 
 			#if VERBOSE
@@ -620,7 +637,9 @@ Action OnMessage(UserMsg msg_id, BfRead hMsg, const int[] players, int playersNu
 				if( g_aStruct.Length == 1 )
 				{
 					g_kvMsgStructs.SetString("0", "<NO ARGS>");
-				} else {
+				}
+				else
+				{
 					for( int i = 1; i < g_aStruct.Length; i++ )
 					{
 						type = g_aStruct.Get(i);
@@ -663,7 +682,9 @@ Action OnMessage(UserMsg msg_id, BfRead hMsg, const int[] players, int playersNu
 
 				return Plugin_Continue;
 			}
-		} else {
+		}
+		else
+		{
 			if( g_aWatch.FindString(msgname) == -1 )
 			{
 				// .Clear() is creating a memory leak
@@ -750,7 +771,9 @@ Action OnMessage(UserMsg msg_id, BfRead hMsg, const int[] players, int playersNu
 			}
 
 			if( g_iCvarLogging & (1<<1) )
+			{
 				WriteFileLine(g_hLogFile, "%s: %s", id, buffer);
+			}
 			else
 			{
 				FormatTime(temp, sizeof(temp), "%H:%M:%S", GetTime());
@@ -781,10 +804,14 @@ Action OnMessage(UserMsg msg_id, BfRead hMsg, const int[] players, int playersNu
 						RequestFrame(OnNext, hPack);
 					}
 					else
+					{
 						g_bWatch[i] = false;
+					}
 				}
 				else
+				{
 					PrintToServer("UM: %s: %s", id, buffer);
+				}
 			}
 		}
 	}
@@ -795,14 +822,16 @@ Action OnMessage(UserMsg msg_id, BfRead hMsg, const int[] players, int playersNu
 void OnNext(DataPack hPack)
 {
 	hPack.Reset();
+
 	int client = hPack.ReadCell();
 	if( (client = GetClientOfUserId(client)) && IsClientInGame(client) )
 	{
 		static char temp[255];
 		hPack.ReadString(temp, sizeof(temp));
-		delete hPack;
 		PrintToChat(client, temp);
 	}
+
+	delete hPack;
 }
 
 
