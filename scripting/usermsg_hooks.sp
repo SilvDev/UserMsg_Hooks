@@ -1,6 +1,6 @@
 /*
 *	UserMsg Hooks - DevTools
-*	Copyright (C) 2024 Silvers
+*	Copyright (C) 2026 Silvers
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 
 
-#define PLUGIN_VERSION 		"1.8"
+#define PLUGIN_VERSION 		"1.9"
 
 /*=======================================================================================
 	Plugin Info:
@@ -31,6 +31,10 @@
 
 ========================================================================================
 	Change Log:
+
+1.9 (14-Mar-2026)
+	- Fixed Windows servers crashing in "Left 4 Dead 1" by blocking "WriteSBitLong" from being read.
+	- Not sure when or why this broke.
 
 1.8 (03-Apr-2024)
 	- Fixed potential memory leak. Thanks to "little_froy" for reporting.
@@ -89,6 +93,7 @@ KeyValues g_kvMsgStructs;
 File g_hLogFile;
 bool g_WatchDetour, g_bWatch[MAXPLAYERS+1];
 int g_iCvarLogging, g_iListening, g_iHookedUserMsg[MAX_MSGS];
+EngineVersion g_iEngine;
 
 enum
 {
@@ -123,6 +128,12 @@ public Plugin myinfo =
 	description = ".",
 	version = PLUGIN_VERSION,
 	url = "https://forums.alliedmods.net/showthread.php?t=319685"
+}
+
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
+{
+	g_iEngine = GetEngineVersion();
+	return APLRes_Success;
 }
 
 public void OnPluginStart()
@@ -287,6 +298,14 @@ void HookDetours()
 	for( int i = 0; i <= MAX_HOOKS; i++ )
 	{
 		patchAddr = patches[i];
+
+		if( g_iEngine == Engine_Left4Dead && i == 10 )
+		{
+			#if VERBOSE
+			PrintToServer("USERMSG: DETOUR %02d PTR %X (%s) -- IGNORING (crash prevention)", i, patchAddr, g_sTypes[i-1]);
+			#endif
+			continue; // Crashes in L4D1 on Windows at least
+		}
 
 		if( patchAddr )
 		{
